@@ -137,33 +137,45 @@ _PASSAPORTE_DEFS: List[Tuple[int, str]] = [
     (70,  "Receber os passaportes e vistos"),
 ]
 
+# Tabela de referência (após checkboxes)
+_PASSAPORTE_TABELA = [
+    {"Categoria": "Passaporte Titular", "Atividade": "Preencher requerimento eletrônico de passaporte", "Prazo": "Assim que tiver a portaria", "Destino/Envio": "formulário-autoridades.serpro.gov.br"},
+    {"Categoria": "", "Atividade": "Imprimir e assinar RER", "Prazo": "Logo após gerar o RER", "Destino/Envio": "Assinar e colar foto"},
+    {"Categoria": "", "Atividade": "Incluir Ficha de Controle", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Identidade militar autenticada", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Documento de naturalidade", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Foto 5x7", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Certidão de quitação eleitoral", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Termo de devolução do passaporte anterior", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
 
-def _get_passaporte_tasks(auth_date: date) -> List[Dict]:
-    if not auth_date:
-        return []
-    tasks = []
-    for i, (offset, title) in enumerate(_PASSAPORTE_DEFS, start=1):
-        tasks.append({
-            "title": title,
-            "deadline": auth_date - timedelta(days=offset),
-            "key": f"pass-{i:02d}",
-        })
-    return tasks
+    {"Categoria": "Passaporte Marido/Esposa", "Atividade": "Preencher requerimento eletrônico de passaporte", "Prazo": "Assim que possível", "Destino/Envio": "formulário-autoridades.serpro.gov.br"},
+    {"Categoria": "", "Atividade": "Imprimir e assinar RER", "Prazo": "Logo após gerar o RER", "Destino/Envio": "Assinar e colar foto"},
+    {"Categoria": "", "Atividade": "Incluir Ficha de Controle", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Identidade civil autenticada (RG ou CNH)", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Documento de naturalidade (Certidão de Nascimento ou Casamento)", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Foto 5x7", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Certidão de quitação eleitoral", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
 
+    {"Categoria": "Passaporte Filho/Filha", "Atividade": "Preencher requerimento eletrônico de passaporte", "Prazo": "Assim que possível", "Destino/Envio": "formulário-autoridades.serpro.gov.br"},
+    {"Categoria": "", "Atividade": "Imprimir e assinar RER (responsável assina)", "Prazo": "Logo após gerar o RER", "Destino/Envio": "Assinar e colar foto (responsável)"},
+    {"Categoria": "", "Atividade": "Incluir Ficha de Controle", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Certidão de Nascimento autenticada", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Documento de naturalidade (Certidão de Nascimento)", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Preencher Formulário de Autorização para emissão de passaporte de menor Assinado por ambos os pais, reconhecer firma em cartório", "Prazo": "Assinado por ambos os pais, reconhecer firma em cartório", "Destino/Envio": "Anexar ao processo físico da filha enviado ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Foto 5x7", "Prazo": "Após emissão do RER", "Destino/Envio": "Processo físico enviado ao EMAER"},
 
-def _get_flag(key: str) -> bool:
-    return bool(st.session_state.get(f"done-{key}", False))
+    {"Categoria": "Visto A-2 Titular", "Atividade": "Preencher formulário DS-160", "Prazo": "Até 30 dias antes da missão", "Destino/Envio": "ceac.state.gov"},
+    {"Categoria": "", "Atividade": "Imprimir confirmação DS-160", "Prazo": "Após preenchimento DS-160", "Destino/Envio": "Juntar ao processo"},
+    {"Categoria": "", "Atividade": "Incluir Ficha de Controle Solicitação", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Portaria de Designação", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Passaporte oficial ou diplomático válido", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Cópias das páginas 2 e 3 do passaporte", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
 
-
-def _set_flag(key: str, val: bool):
-    st.session_state[f"done-{key}"] = val
-
-
-def _ferias_progress(auth_date: date) -> Tuple[int, int]:
-    tasks = _get_ferias_tasks(auth_date)
-    total = len(tasks)
-    done = sum(1 for t in tasks if _get_flag(t["key"]))
-    return done, total
+    {"Categoria": "Visto A-2 Titular", "Atividade": "Incluir Foto 5x7", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
+    {"Categoria": "", "Atividade": "Preencher formulário DS-160", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "ceac.state.gov"},
+    {"Categoria": "", "Atividade": "Imprimir confirmação DS-160", "Prazo": "Após preenchimento DS-160", "Destino/Envio": "Juntar ao processo"},
+    {"Categoria": "", "Atividade": "Incluir cópia do passaporte oficial", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Cópia das páginas 2 e 3 do passaporte", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER
 
 
 def _passaporte_progress(auth_date: date) -> Tuple[int, int]:
@@ -386,7 +398,7 @@ def main():
         st.radio("Etapas", options=PAGES, index=nav_index, key="nav")
         st.session_state.page = st.session_state.nav
         st.divider()
-        st.markdown("**Data de autorização de saída do país**")
+        st.markdown("**Data de autorização de saída do país**")ção de saída do país**")
         st.session_state.auth_date = st.date_input(
             "Selecione a data",
             value=st.session_state.auth_date,
