@@ -14,7 +14,7 @@ PAGES = [
 ]
 
 # ----------------------
-# Helpers de estado
+# Estado e navegação
 # ----------------------
 
 def _init_state():
@@ -24,11 +24,11 @@ def _init_state():
         st.session_state.page = PAGES[0]
     if "auth_date" not in st.session_state:
         st.session_state.auth_date = None
-
+    if "nav" not in st.session_state:
+        st.session_state.nav = st.session_state.page
 
 def _page_index() -> int:
     return PAGES.index(st.session_state.page)
-
 
 def _go_prev_page():
     idx = _page_index()
@@ -36,56 +36,68 @@ def _go_prev_page():
     st.session_state.page = new_page
     st.session_state.nav = new_page
 
-
 def _go_next_page():
     idx = _page_index()
     new_page = PAGES[min(len(PAGES) - 1, idx + 1)]
     st.session_state.page = new_page
     st.session_state.nav = new_page
 
-
-def _go_next_page():
-    idx = _page_index()
-    st.session_state.page = PAGES[min(len(PAGES) - 1, idx + 1)]
-
+# ----------------------
+# Tarefas manuais (mantidas, mas não exibidas)
+# ----------------------
 
 def _get_tasks(page: str) -> List[Dict]:
     return st.session_state.data.setdefault(page, [])
 
-
-def _save_task(page: str, title: str):
-    tasks = _get_tasks(page)
-    tasks.append({
-        "title": title.strip(),
-        "done": False,
-        "notes": "",
-    })
-
-
 def _toggle_task(page: str, idx: int, value: bool):
     st.session_state.data[page][idx]["done"] = value
-
 
 def _update_notes(page: str, idx: int, value: str):
     st.session_state.data[page][idx]["notes"] = value
 
-
 def _delete_task(page: str, idx: int):
     st.session_state.data[page].pop(idx)
 
+# ----------------------
+# Progresso e UI helpers
+# ----------------------
 
-def _progress(tasks: List[Dict]) -> float:
-    if not tasks:
-        return 0.0
-    done = sum(1 for t in tasks if t.get("done"))
-    return done / len(tasks)
+def status_badge(is_done: bool):
+    color = "#16a34a" if is_done else "#dc2626"  # verde / vermelho
+    label = "Feito" if is_done else "Aguardando"
+    st.markdown(
+        f"<span style='padding:2px 8px; border-radius:999px; background:{color}; color:white; font-size:12px;'>{label}</span>",
+        unsafe_allow_html=True,
+    )
+
+def deadline_chip(d: date):
+    today = date.today()
+    delta = (d - today).days
+    if delta > 0:
+        color = "#16a34a"  # verde (futuro)
+    else:
+        color = "#dc2626"  # vermelho (hoje ou passado)
+    txt = f"Prazo: {d.strftime('%d/%m/%Y')}"
+    if delta < 0:
+        txt += f" (Atraso: {abs(delta)}d)"
+    elif delta == 0:
+        txt += " (HOJE)"
+    st.markdown(
+        f"<div style='display:inline-block;padding:5px 12px;border-radius:12px;background:{color};color:white;font-weight:bold;font-size:12px;'>{txt}</div>",
+        unsafe_allow_html=True,
+    )
 
 # ----------------------
-# FERIAS (geradas a partir da data de autorização de saída do país)
+# FÉRIAS (datas relativas à saída do país)
 # ----------------------
+
+def _get_flag(key: str) -> bool:
+    return bool(st.session_state.get(f"done-{key}", False))
+
+def _set_flag(key: str, val: bool):
+    st.session_state[f"done-{key}"] = val
 
 def _get_ferias_tasks(auth_date: date) -> List[Dict]:
-    """Retorna as 3 atividades de férias e seus prazos relativos à data selecionada."""
     if not auth_date:
         return []
     return [
@@ -101,14 +113,46 @@ def _get_ferias_tasks(auth_date: date) -> List[Dict]:
         },
         {
             "title": "Apresentação no Portal do Militar – TÉRMINO de Férias",
-            # assumindo que a data de missão = data de saída do país
             "deadline": auth_date - timedelta(days=1),
             "key": "ferias-3",
         },
     ]
 
+def _ferias_progress(auth_date: date) -> Tuple[int, int]:
+    tasks = _get_ferias_tasks(auth_date)
+    total = len(tasks)
+    done = sum(1 for t in tasks if _get_flag(t["key"]))
+    return done, total
+
+def render_ferias_section():
+    st.subheader("Férias – prazos automáticos")
+    if not st.session_state.auth_date:
+        st.info("Selecione a **data de autorização de saída do país** na barra lateral para ver os prazos de férias.")
+        return 0, 0
+
+    tasks = _get_ferias_tasks(st.session_state.auth_date)
+    f_done = 0
+
+    for i, t in enumerate(tasks):
+        cols = st.columns([0.08, 0.62, 0.15, 0.15])
+        with cols[0]:
+            checked = st.checkbox("", value=_get_flag(t["key"]), key=f"ui-{t['key']}")
+            if checked != _get_flag(t["key"]):
+                _set_flag(t["key"], checked)
+        with cols[1]:
+            st.markdown(f"**{t['title']}**")
+            deadline_chip(t["deadline"])
+        with cols[2]:
+            status_badge(_get_flag(t["key"]))
+        with cols[3]:
+            st.write("")
+        if _get_flag(t["key"]):
+            f_done += 1
+
+    return f_done, len(tasks)
+
 # ----------------------
-# PASSAPORTE & VISTO (tarefas e prazos relativos em dias antes da missão)
+# PASSAPORTE & VISTO (automático + tabela opcional)
 # ----------------------
 
 _PASSAPORTE_DEFS: List[Tuple[int, str]] = [
@@ -137,7 +181,6 @@ _PASSAPORTE_DEFS: List[Tuple[int, str]] = [
     (70,  "Receber os passaportes e vistos"),
 ]
 
-# Tabela de referência (após checkboxes)
 _PASSAPORTE_TABELA = [
     {"Categoria": "Passaporte Titular", "Atividade": "Preencher requerimento eletrônico de passaporte", "Prazo": "Assim que tiver a portaria", "Destino/Envio": "formulário-autoridades.serpro.gov.br"},
     {"Categoria": "", "Atividade": "Imprimir e assinar RER", "Prazo": "Logo após gerar o RER", "Destino/Envio": "Assinar e colar foto"},
@@ -185,7 +228,6 @@ _PASSAPORTE_TABELA = [
     {"Categoria": "", "Atividade": "Incluir Foto 5x7", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
 ]
 
-
 def _get_passaporte_tasks(auth_date: date) -> List[Dict]:
     if not auth_date:
         return []
@@ -198,157 +240,11 @@ def _get_passaporte_tasks(auth_date: date) -> List[Dict]:
         })
     return tasks
 
-
-def _get_flag(key: str) -> bool:
-    return bool(st.session_state.get(f"done-{key}", False))
-
-
-def _set_flag(key: str, val: bool):
-    st.session_state[f"done-{key}"] = val
-
-
-def _ferias_progress(auth_date: date) -> Tuple[int, int]:
-    tasks = _get_ferias_tasks(auth_date)
-    total = len(tasks)
-    done = sum(1 for t in tasks if _get_flag(t["key"]))
-    return done, total
-
-
 def _passaporte_progress(auth_date: date) -> Tuple[int, int]:
     tasks = _get_passaporte_tasks(auth_date)
     total = len(tasks)
     done = sum(1 for t in tasks if _get_flag(t["key"]))
     return done, total
-
-
-def _passaporte_progress(auth_date: date) -> Tuple[int, int]:
-    tasks = _get_passaporte_tasks(auth_date)
-    total = len(tasks)
-    done = sum(1 for t in tasks if _get_flag(t["key"]))
-    return done, total
-
-
-def _overall_progress() -> float:
-    # progresso das listas manuais
-    total = 0
-    done = 0
-    for page in PAGES:
-        tasks = _get_tasks(page)
-        total += len(tasks)
-        done += sum(1 for t in tasks if t.get("done"))
-    # incluir férias e passaporte, se houver data
-    if st.session_state.auth_date:
-        f_done, f_total = _ferias_progress(st.session_state.auth_date)
-        p_done, p_total = _passaporte_progress(st.session_state.auth_date)
-        total += (f_total + p_total)
-        done += (f_done + p_done)
-    return (done / total) if total else 0.0
-
-# ----------------------
-# Exportar / importar
-# ----------------------
-
-def export_json_button():
-    # também exportamos os estados de férias
-    extra_state = {
-        k: v for k, v in st.session_state.items() if k.startswith("done-")
-    }
-    payload = {
-        "lists": st.session_state.data,
-        "auth_date": st.session_state.auth_date.isoformat() if st.session_state.auth_date else None,
-        "extras": extra_state,
-    }
-    blob = json.dumps(payload, ensure_ascii=False, indent=2)
-    st.download_button(
-        label="⬇️ Exportar progresso (JSON)",
-        file_name="cabw_checklist.json",
-        mime="application/json",
-        data=blob,
-        use_container_width=True,
-    )
-
-
-def import_json_uploader():
-    up = st.file_uploader("Importar progresso (JSON)", type=["json"], accept_multiple_files=False)
-    if up is not None:
-        try:
-            data = json.loads(up.read().decode("utf-8"))
-            if isinstance(data, dict):
-                lists = data.get("lists", {})
-                for page in PAGES:
-                    lists.setdefault(page, [])
-                st.session_state.data = lists
-
-                ad = data.get("auth_date")
-                st.session_state.auth_date = date.fromisoformat(ad) if ad else None
-
-                extras = data.get("extras", {})
-                for k, v in extras.items():
-                    st.session_state[k] = v
-
-                st.success("Progresso importado com sucesso.")
-            else:
-                st.error("Arquivo JSON inválido.")
-        except Exception as e:
-            st.error(f"Falha ao importar: {e}")
-
-
-# ----------------------
-# UI utilitários
-# ----------------------
-
-def status_badge(is_done: bool):
-    color = "#16a34a" if is_done else "#dc2626"  # verde / vermelho
-    label = "Feito" if is_done else "Aguardando"
-    st.markdown(
-        f"<span style='padding:2px 8px; border-radius:999px; background:{color}; color:white; font-size:12px;'>{label}</span>",
-        unsafe_allow_html=True,
-    )
-
-
-def deadline_chip(d: date):
-    today = date.today()
-    delta = (d - today).days
-    if delta > 0:
-        txt = f"Prazo: {d.strftime('%d/%m/%Y')} (D-{delta})"
-    elif delta == 0:
-        txt = f"Prazo: {d.strftime('%d/%m/%Y')} (HOJE)"
-    else:
-        txt = f"Prazo: {d.strftime('%d/%m/%Y')} (Atraso: {abs(delta)}d)"
-    st.caption(txt)
-
-
-# ----------------------
-# UI de tarefas por página
-# ----------------------
-
-def render_ferias_section():
-    st.subheader("Férias – prazos automáticos")
-    if not st.session_state.auth_date:
-        st.info("Selecione a **data de autorização de saída do país** na barra lateral para ver os prazos de férias.")
-        return 0, 0
-
-    tasks = _get_ferias_tasks(st.session_state.auth_date)
-    f_done = 0
-
-    for i, t in enumerate(tasks):
-        cols = st.columns([0.08, 0.62, 0.15, 0.15])
-        with cols[0]:
-            checked = st.checkbox("", value=_get_flag(t["key"]), key=f"ui-{t['key']}")
-            if checked != _get_flag(t["key"]):
-                _set_flag(t["key"], checked)
-        with cols[1]:
-            st.markdown(f"**{t['title']}**")
-            deadline_chip(t["deadline"])
-        with cols[2]:
-            status_badge(_get_flag(t["key"]))
-        with cols[3]:
-            st.write("")
-        if _get_flag(t["key"]):
-            f_done += 1
-
-    return f_done, len(tasks)
-
 
 def render_passaporte_reference_table():
     st.markdown("### Tabela de referência – Passaporte e Visto")
@@ -364,12 +260,12 @@ def render_passaporte_reference_table():
         today = date.today()
         delta = (label_date - today).days
         if delta > 0:
-            color = "#16a34a"  # futuro -> VERDE (ainda há tempo)
+            color = "#16a34a"  # verde (futuro)
         else:
-            color = "#dc2626"  # hoje ou passado -> VERMELHO  # passado -> verde escuro
+            color = "#dc2626"  # vermelho (hoje ou passado)
         txt = f"{prefix}{label_date.strftime('%d/%m/%Y')}"
         st.markdown(
-            f"<div style='display:inline-block;padding:4px 10px;border-radius:10px;background:{color};color:white;font-size:12px;'>{txt}</div>",
+            f"<div style='display:inline-block;padding:5px 12px;border-radius:12px;background:{color};color:white;font-weight:bold;font-size:12px;'>{txt}</div>",
             unsafe_allow_html=True,
         )
 
@@ -385,7 +281,6 @@ def render_passaporte_reference_table():
         else:
             c[2].write(prazo_txt)
         c[3].write(row.get("Destino/Envio", ""))
-
 
 def render_passaporte_section():
     st.subheader("Passaporte e Visto – prazos automáticos")
@@ -413,14 +308,93 @@ def render_passaporte_section():
             p_done += 1
 
     st.divider()
-    render_passaporte_reference_table()
+    # Mostrar tabela apenas ao clicar no botão
+    if "show_pass_table" not in st.session_state:
+        st.session_state.show_pass_table = False
+
+    if st.session_state.show_pass_table:
+        if st.button("🔙 Ocultar Tabela", use_container_width=True):
+            st.session_state.show_pass_table = False
+            st.rerun()
+        render_passaporte_reference_table()
+    else:
+        if st.button("🔍 Visualizar Tabela Completa", use_container_width=True):
+            st.session_state.show_pass_table = True
+            st.rerun()
+
     return p_done, len(tasks)
 
+# ----------------------
+# Progresso geral
+# ----------------------
+
+def _overall_progress() -> float:
+    total = 0
+    done = 0
+    # Contar tarefas manuais (se existirem)
+    for page in PAGES:
+        tasks = _get_tasks(page)
+        total += len(tasks)
+        done += sum(1 for t in tasks if t.get("done"))
+    # Incluir férias e passaporte, se houver data
+    if st.session_state.auth_date:
+        f_done, f_total = _ferias_progress(st.session_state.auth_date)
+        p_done, p_total = _passaporte_progress(st.session_state.auth_date)
+        total += (f_total + p_total)
+        done += (f_done + p_done)
+    return (done / total) if total else 0.0
+
+# ----------------------
+# Exportar / importar
+# ----------------------
+
+def export_json_button():
+    extra_state = {k: v for k, v in st.session_state.items() if k.startswith("done-")}
+    payload = {
+        "lists": st.session_state.data,
+        "auth_date": st.session_state.auth_date.isoformat() if st.session_state.auth_date else None,
+        "extras": extra_state,
+    }
+    blob = json.dumps(payload, ensure_ascii=False, indent=2)
+    st.download_button(
+        label="⬇️ Exportar progresso (JSON)",
+        file_name="cabw_checklist.json",
+        mime="application/json",
+        data=blob,
+        use_container_width=True,
+    )
+
+def import_json_uploader():
+    up = st.file_uploader("Importar progresso (JSON)", type=["json"], accept_multiple_files=False)
+    if up is not None:
+        try:
+            data = json.loads(up.read().decode("utf-8"))
+            if isinstance(data, dict):
+                lists = data.get("lists", {})
+                for page in PAGES:
+                    lists.setdefault(page, [])
+                st.session_state.data = lists
+
+                ad = data.get("auth_date")
+                st.session_state.auth_date = date.fromisoformat(ad) if ad else None
+
+                extras = data.get("extras", {})
+                for k, v in extras.items():
+                    st.session_state[k] = v
+
+                st.success("Progresso importado com sucesso.")
+            else:
+                st.error("Arquivo JSON inválido.")
+        except Exception as e:
+            st.error(f"Falha ao importar: {e}")
+
+# ----------------------
+# Render por página
+# ----------------------
 
 def render_tasks(page: str):
     st.subheader(page)
 
-    # progresso da página (listas automáticas quando aplicável)
     manual_tasks = _get_tasks(page)
     manual_done = sum(1 for t in manual_tasks if t.get("done"))
     manual_total = len(manual_tasks)
@@ -462,7 +436,6 @@ def render_tasks(page: str):
             _go_next_page()
             st.rerun()
 
-
 # ----------------------
 # App principal
 # ----------------------
@@ -486,7 +459,7 @@ def main():
             value=st.session_state.auth_date,
             format="DD/MM/YYYY",
         )
-        st.caption("Essa data alimenta os prazos automáticos (ex.: férias).")
+        st.caption("Essa data alimenta os prazos automáticos (ex.: férias, passaporte).")
         st.divider()
         st.markdown("**Progresso Geral**")
         overall = _overall_progress()
@@ -495,16 +468,13 @@ def main():
         import_json_uploader()
         st.caption("Dica: exporte seu progresso antes de trocar de dispositivo.")
 
-    # Render da página selecionada
     render_tasks(st.session_state.page)
 
-    # Rodapé
     st.divider()
     st.caption(
-        "Protótipo com geração automática da seção 'Férias' com base na data de saída. "
-        "Ao definir as demais páginas, incluiremos prazos relativos semelhantes."
+        "Versão com geração automática de prazos. "
+        "A tabela de referência de Passaporte/Visto aparece sob demanda pelo botão na seção."
     )
-
 
 if __name__ == "__main__":
     main()
