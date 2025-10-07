@@ -1,6 +1,6 @@
 import json
 from typing import Dict, List, Tuple
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta
 import streamlit as st
 
 APP_TITLE = "Checklist de Preparação para Designação – CABW"
@@ -22,19 +22,22 @@ def _init_state():
         st.session_state.data = {page: [] for page in PAGES}
     if "page" not in st.session_state:
         st.session_state.page = PAGES[0]
-    if "auth_date" not in st.session_state:
-        st.session_state.auth_date = None
     if "nav" not in st.session_state:
         st.session_state.nav = st.session_state.page
+    if "auth_date" not in st.session_state:
+        st.session_state.auth_date = None
+
 
 def _page_index() -> int:
     return PAGES.index(st.session_state.page)
+
 
 def _go_prev_page():
     idx = _page_index()
     new_page = PAGES[max(0, idx - 1)]
     st.session_state.page = new_page
     st.session_state.nav = new_page
+
 
 def _go_next_page():
     idx = _page_index()
@@ -43,23 +46,26 @@ def _go_next_page():
     st.session_state.nav = new_page
 
 # ----------------------
-# Tarefas manuais (mantidas, mas não exibidas)
+# Helpers de tarefas manuais (mantidos para compatibilidade)
 # ----------------------
 
 def _get_tasks(page: str) -> List[Dict]:
     return st.session_state.data.setdefault(page, [])
 
+
 def _toggle_task(page: str, idx: int, value: bool):
     st.session_state.data[page][idx]["done"] = value
 
+
 def _update_notes(page: str, idx: int, value: str):
     st.session_state.data[page][idx]["notes"] = value
+
 
 def _delete_task(page: str, idx: int):
     st.session_state.data[page].pop(idx)
 
 # ----------------------
-# Progresso e UI helpers
+# UI helpers
 # ----------------------
 
 def status_badge(is_done: bool):
@@ -70,13 +76,11 @@ def status_badge(is_done: bool):
         unsafe_allow_html=True,
     )
 
+
 def deadline_chip(d: date):
     today = date.today()
     delta = (d - today).days
-    if delta > 0:
-        color = "#16a34a"  # verde (futuro)
-    else:
-        color = "#dc2626"  # vermelho (hoje ou passado)
+    color = "#16a34a" if delta > 0 else "#dc2626"  # verde futuro / vermelho hoje ou passado
     txt = f"Prazo: {d.strftime('%d/%m/%Y')}"
     if delta < 0:
         txt += f" (Atraso: {abs(delta)}d)"
@@ -88,14 +92,19 @@ def deadline_chip(d: date):
     )
 
 # ----------------------
-# FÉRIAS (datas relativas à saída do país)
+# Flags comuns
 # ----------------------
 
 def _get_flag(key: str) -> bool:
     return bool(st.session_state.get(f"done-{key}", False))
 
+
 def _set_flag(key: str, val: bool):
     st.session_state[f"done-{key}"] = val
+
+# ----------------------
+# FÉRIAS (datas relativas)
+# ----------------------
 
 def _get_ferias_tasks(auth_date: date) -> List[Dict]:
     if not auth_date:
@@ -118,11 +127,13 @@ def _get_ferias_tasks(auth_date: date) -> List[Dict]:
         },
     ]
 
-def _ferias_progress(auth_date: date) -> Tuple[int, int]:
+
+def _ferias_progress(auth_date: date):
     tasks = _get_ferias_tasks(auth_date)
     total = len(tasks)
     done = sum(1 for t in tasks if _get_flag(t["key"]))
     return done, total
+
 
 def render_ferias_section():
     st.subheader("Férias – prazos automáticos")
@@ -133,7 +144,7 @@ def render_ferias_section():
     tasks = _get_ferias_tasks(st.session_state.auth_date)
     f_done = 0
 
-    for i, t in enumerate(tasks):
+    for t in tasks:
         cols = st.columns([0.08, 0.62, 0.15, 0.15])
         with cols[0]:
             checked = st.checkbox("", value=_get_flag(t["key"]), key=f"ui-{t['key']}")
@@ -154,7 +165,6 @@ def render_ferias_section():
 # ----------------------
 # PASSAPORTE & VISTO (automático + tabela opcional)
 # ----------------------
-
 _PASSAPORTE_DEFS: List[Tuple[int, str]] = [
     (180, "AGD – Fazer contato com o GAP-SJ para verificar possibilidade de passaporte pelo DECEA"),
     (155, "Agendar foto"),
@@ -228,6 +238,7 @@ _PASSAPORTE_TABELA = [
     {"Categoria": "", "Atividade": "Incluir Foto 5x7", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
 ]
 
+
 def _get_passaporte_tasks(auth_date: date) -> List[Dict]:
     if not auth_date:
         return []
@@ -240,15 +251,16 @@ def _get_passaporte_tasks(auth_date: date) -> List[Dict]:
         })
     return tasks
 
-def _passaporte_progress(auth_date: date) -> Tuple[int, int]:
+
+def _passaporte_progress(auth_date: date):
     tasks = _get_passaporte_tasks(auth_date)
     total = len(tasks)
     done = sum(1 for t in tasks if _get_flag(t["key"]))
     return done, total
 
+
 def render_passaporte_reference_table():
     st.markdown("### Tabela de referência – Passaporte e Visto")
-    # Cabeçalho
     h = st.columns([0.22, 0.44, 0.18, 0.16])
     h[0].markdown("**Categoria**")
     h[1].markdown("**Atividade**")
@@ -259,10 +271,7 @@ def render_passaporte_reference_table():
     def _prazo_box(label_date: date, prefix: str = ""):
         today = date.today()
         delta = (label_date - today).days
-        if delta > 0:
-            color = "#16a34a"  # verde (futuro)
-        else:
-            color = "#dc2626"  # vermelho (hoje ou passado)
+        color = "#16a34a" if delta > 0 else "#dc2626"
         txt = f"{prefix}{label_date.strftime('%d/%m/%Y')}"
         st.markdown(
             f"<div style='display:inline-block;padding:5px 12px;border-radius:12px;background:{color};color:white;font-weight:bold;font-size:12px;'>{txt}</div>",
@@ -282,6 +291,7 @@ def render_passaporte_reference_table():
             c[2].write(prazo_txt)
         c[3].write(row.get("Destino/Envio", ""))
 
+
 def render_passaporte_section():
     st.subheader("Passaporte e Visto – prazos automáticos")
     if not st.session_state.auth_date:
@@ -291,7 +301,7 @@ def render_passaporte_section():
     tasks = _get_passaporte_tasks(st.session_state.auth_date)
     p_done = 0
 
-    for i, t in enumerate(tasks):
+    for t in tasks:
         cols = st.columns([0.08, 0.62, 0.15, 0.15])
         with cols[0]:
             checked = st.checkbox("", value=_get_flag(t["key"]), key=f"ui-{t['key']}")
@@ -308,7 +318,6 @@ def render_passaporte_section():
             p_done += 1
 
     st.divider()
-    # Mostrar tabela apenas ao clicar no botão
     if "show_pass_table" not in st.session_state:
         st.session_state.show_pass_table = False
 
@@ -325,23 +334,152 @@ def render_passaporte_section():
     return p_done, len(tasks)
 
 # ----------------------
+# INSPSAU (automático + dicas sob demanda)
+# ----------------------
+
+_INSPSAU_DEFS: List[Tuple[int, str]] = [
+    (180, "Marcar exames Preventivos (MULHER)"),
+    (120, "Marcar Inspeção de Saúde (Letra F) para toda família"),
+    (30,  "Resultado da INSPSAU publicada em BCA e nas alterações"),
+]
+
+
+def _get_inspsau_tasks(auth_date: date) -> List[Dict]:
+    if not auth_date:
+        return []
+    tasks = []
+    for i, (offset, title) in enumerate(_INSPSAU_DEFS, start=1):
+        tasks.append({
+            "title": title,
+            "deadline": auth_date - timedelta(days=offset),
+            "key": f"insp-{i:02d}",
+        })
+    return tasks
+
+
+def _inspsau_progress(auth_date: date):
+    tasks = _get_inspsau_tasks(auth_date)
+    total = len(tasks)
+    done = sum(1 for t in tasks if _get_flag(t["key"]))
+    return done, total
+
+_INSPSAU_TIPS = [
+    {"Categoria": "Pré-inspeção", "Item/Exame": "Realizar INSPSAU 120 dias antes do embarque", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Jejum de 10-12h para coleta de exames", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Finalizar tratamentos médicos e odontológicos prévios", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Carteira de vacinação atualizada", "Observações": "Hepatite B, Febre Amarela e Tétano em dia"},
+    {"Categoria": "Recomendações gerais", "Item/Exame": "Agendar Teste Ergométrico", "Observações": "Obrigatório a partir de 35 anos"},
+    {"Categoria": "", "Item/Exame": "Agendar Radiografia Panorâmica Oral", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Realizar EPF (sangue oculto nas fezes)", "Observações": "> 40 anos obrigatório"},
+    {"Categoria": "", "Item/Exame": "Revisão odontológica / finalização de tratamentos", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Atualizar Carteira de Vacinação", "Observações": ""},
+    {"Categoria": "Recomendações específicas - Mulheres", "Item/Exame": "Avaliação ginecológica e exames ginecológicos", "Observações": "Obrigatório se vida sexual iniciada. Papanicolau válido por 180 dias"},
+    {"Categoria": "Exames clínicos obrigatórios", "Item/Exame": "Exame médico geral (altura, peso, IMC, PA, FC)", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Exame oftalmológico completo", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Otorrino com audiometria tonal aérea", "Observações": "Validade máxima: 180 dias"},
+    {"Categoria": "", "Item/Exame": "Exame odontológico com radiografia panorâmica", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Exame psiquiátrico + questionários L e M", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Exame neurológico (EEG se indicado)", "Observações": "EEG às quintas, se indicado"},
+    {"Categoria": "", "Item/Exame": "Exame ginecológico", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "ECG em repouso (a partir de 12 anos)", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Teste ergométrico (>= 35 anos)", "Observações": "Trazer resultado no dia"},
+    {"Categoria": "", "Item/Exame": "Radiografia de tórax (PA e perfil)", "Observações": ""},
+    {"Categoria": "Exames laboratoriais - até 35 anos", "Item/Exame": "Hemograma completo", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Glicose, ureia, creatinina", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Grupo sanguíneo e fator Rh", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "VDRL (e FTA-ABS se positivo)", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Anti-HIV (com confirmação se positivo)", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "EAS (urina tipo 1)", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Beta-HCG (para mulheres)", "Observações": ""},
+    {"Categoria": "Exames laboratoriais - mulheres", "Item/Exame": "Colesterol total, HDL, LDL, triglicérides", "Observações": "Válido por 180 dias"},
+    {"Categoria": "Exames laboratoriais - acima de 35 anos", "Item/Exame": "Ácido úrico", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "PSA total (>= 45 anos)", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "PSA livre (se PSA total > 2,5)", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Hemoglobina glicada (se aplicável)", "Observações": ""},
+    {"Categoria": "Vacinas obrigatórias", "Item/Exame": "Vacina Febre Amarela", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Vacina Antitetânica", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Vacina Hepatite B", "Observações": ""},
+    {"Categoria": "", "Item/Exame": "Vacina COVID-19", "Observações": ""},
+    {"Categoria": "Dependentes < 12 anos", "Item/Exame": "Relatório do pediatra", "Observações": "Será feito no dia da inspeção"},
+    {"Categoria": "", "Item/Exame": "Carteira de Vacinação da criança", "Observações": "Cópia da caderneta"},
+    {"Categoria": "", "Item/Exame": "Exames sob critério clínico", "Observações": ""},
+]
+
+
+def render_inspsau_tips():
+    st.markdown("### Dicas sobre a INSPSAU")
+    h = st.columns([0.24, 0.46, 0.30])
+    h[0].markdown("**Categoria**")
+    h[1].markdown("**Item / Exame**")
+    h[2].markdown("**Observações**")
+    st.divider()
+    for row in _INSPSAU_TIPS:
+        c = st.columns([0.24, 0.46, 0.30])
+        c[0].write(row.get("Categoria", ""))
+        c[1].write(row.get("Item/Exame", ""))
+        c[2].write(row.get("Observações", ""))
+
+
+def render_inspsau_section():
+    st.subheader("INSPSAU – prazos automáticos")
+    if not st.session_state.auth_date:
+        st.info("Selecione a **data de autorização de saída do país** na barra lateral para ver os prazos da INSPSAU.")
+        return 0, 0
+
+    tasks = _get_inspsau_tasks(st.session_state.auth_date)
+    i_done = 0
+
+    for t in tasks:
+        cols = st.columns([0.08, 0.62, 0.15, 0.15])
+        with cols[0]:
+            checked = st.checkbox("", value=_get_flag(t["key"]), key=f"ui-{t['key']}")
+            if checked != _get_flag(t["key"]):
+                _set_flag(t["key"], checked)
+        with cols[1]:
+            st.markdown(f"**{t['title']}**")
+            deadline_chip(t["deadline"])
+        with cols[2]:
+            status_badge(_get_flag(t["key"]))
+        with cols[3]:
+            st.write("")
+        if _get_flag(t["key"]):
+            i_done += 1
+
+    st.divider()
+    if "show_inspsau_tips" not in st.session_state:
+        st.session_state.show_inspsau_tips = False
+
+    if st.session_state.show_inspsau_tips:
+        if st.button("🔙 Ocultar Dicas", use_container_width=True):
+            st.session_state.show_inspsau_tips = False
+            st.rerun()
+        render_inspsau_tips()
+    else:
+        if st.button("💡 Dicas sobre a INSPSAU", use_container_width=True):
+            st.session_state.show_inspsau_tips = True
+            st.rerun()
+
+    return i_done, len(tasks)
+
+# ----------------------
 # Progresso geral
 # ----------------------
 
 def _overall_progress() -> float:
     total = 0
     done = 0
-    # Contar tarefas manuais (se existirem)
+    # listas manuais (se houver)
     for page in PAGES:
         tasks = _get_tasks(page)
         total += len(tasks)
         done += sum(1 for t in tasks if t.get("done"))
-    # Incluir férias e passaporte, se houver data
+    # blocos automáticos
     if st.session_state.auth_date:
         f_done, f_total = _ferias_progress(st.session_state.auth_date)
         p_done, p_total = _passaporte_progress(st.session_state.auth_date)
-        total += (f_total + p_total)
-        done += (f_done + p_done)
+        i_done, i_total = _inspsau_progress(st.session_state.auth_date)
+        total += (f_total + p_total + i_total)
+        done += (f_done + p_done + i_done)
     return (done / total) if total else 0.0
 
 # ----------------------
@@ -363,6 +501,7 @@ def export_json_button():
         data=blob,
         use_container_width=True,
     )
+
 
 def import_json_uploader():
     up = st.file_uploader("Importar progresso (JSON)", type=["json"], accept_multiple_files=False)
@@ -402,7 +541,6 @@ def render_tasks(page: str):
     auto_done = 0
     auto_total = 0
 
-    # Seções automáticas por página
     if page == "Antes da Missão":
         st.info("As atividades de **Férias** são geradas automaticamente a partir da data selecionada.")
         f_done, f_total = render_ferias_section()
@@ -415,13 +553,18 @@ def render_tasks(page: str):
         auto_done += p_done
         auto_total += p_total
         st.divider()
+    elif page == "INSPSAU (Inspeção de Saúde)":
+        st.info("As atividades da **INSPSAU** são geradas automaticamente a partir da data selecionada.")
+        i_done, i_total = render_inspsau_section()
+        auto_done += i_done
+        auto_total += i_total
+        st.divider()
 
     total = manual_total + auto_total
     done = manual_done + auto_done
     prog = (done / total) if total else 0.0
     st.progress(prog, text=f"Progresso: {int(prog*100)}%")
 
-    # Navegação tipo formulário (Anterior / Próximo)
     st.divider()
     c1, c2, c3 = st.columns([1, 2, 1])
     with c1:
@@ -459,7 +602,7 @@ def main():
             value=st.session_state.auth_date,
             format="DD/MM/YYYY",
         )
-        st.caption("Essa data alimenta os prazos automáticos (ex.: férias, passaporte).")
+        st.caption("Essa data alimenta os prazos automáticos (ex.: férias, passaporte, INSPSAU).")
         st.divider()
         st.markdown("**Progresso Geral**")
         overall = _overall_progress()
@@ -471,10 +614,8 @@ def main():
     render_tasks(st.session_state.page)
 
     st.divider()
-    st.caption(
-        "Versão com geração automática de prazos. "
-        "A tabela de referência de Passaporte/Visto aparece sob demanda pelo botão na seção."
-    )
+    st.caption("Versão com prazos automáticos para Férias, Passaporte/Visto e INSPSAU. Tabelas auxiliares sob demanda.")
+
 
 if __name__ == "__main__":
     main()
