@@ -256,17 +256,17 @@ def render_ferias_section():
     for i, t in enumerate(tasks):
         cols = st.columns([0.08, 0.62, 0.15, 0.15])
         with cols[0]:
-            checked = st.checkbox("", value=_get_ferias_done(t["key"]), key=f"ui-{t['key']}")
-            if checked != _get_ferias_done(t["key"]):
-                _set_ferias_done(t["key"], checked)
+            checked = st.checkbox("", value=_get_flag(t["key"]), key=f"ui-{t['key']}")
+            if checked != _get_flag(t["key"]):
+                _set_flag(t["key"], checked)
         with cols[1]:
             st.markdown(f"**{t['title']}**")
             deadline_chip(t["deadline"])
         with cols[2]:
-            status_badge(_get_ferias_done(t["key"]))
+            status_badge(_get_flag(t["key"]))
         with cols[3]:
             st.write("")
-        if _get_ferias_done(t["key"]):
+        if _get_flag(t["key"]):
             f_done += 1
 
     return f_done, len(tasks)
