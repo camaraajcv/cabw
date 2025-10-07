@@ -327,15 +327,10 @@ def render_tasks(page: str):
 
     # Seções automáticas por página
     if page == "Antes da Missão":
-        st.info("As atividades automáticas abaixo são geradas a partir da data selecionada.")
+        st.info("As atividades de **Férias** são geradas automaticamente a partir da data selecionada.")
         f_done, f_total = render_ferias_section()
         auto_done += f_done
         auto_total += f_total
-        st.divider()
-        # Também mostrar Passaporte aqui para visão geral antes da missão
-        p_done, p_total = render_passaporte_section()
-        auto_done += p_done
-        auto_total += p_total
         st.divider()
     elif page == "Passaporte e Visto":
         st.info("As atividades de **Passaporte e Visto** são geradas automaticamente a partir da data selecionada.")
@@ -355,14 +350,14 @@ def render_tasks(page: str):
     with c1:
         if st.button("◀️ Anterior", use_container_width=True, disabled=_page_index() == 0):
             _go_prev_page()
-            st.experimental_rerun()
+            st.rerun()
     with c2:
         idx = _page_index() + 1
         st.markdown(f"<div style='text-align:center;'>Etapa {idx}/{len(PAGES)}</div>", unsafe_allow_html=True)
     with c3:
         if st.button("Próximo ▶️", use_container_width=True, disabled=_page_index() == len(PAGES)-1):
             _go_next_page()
-            st.experimental_rerun()
+            st.rerun()
 
 
 # ----------------------
@@ -408,3 +403,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
