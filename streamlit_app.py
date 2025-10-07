@@ -6,7 +6,6 @@ import streamlit as st
 APP_TITLE = "Checklist de Preparação para Designação – CABW"
 PAGES = [
     "Antes da Missão",
-    "Chegada na CABW",
     "INSPSAU (Inspeção de Saúde)",
     "Pagamento",
     "RAIRE",
@@ -462,6 +461,75 @@ def render_inspsau_section():
     return i_done, len(tasks)
 
 # ----------------------
+# PAGAMENTO (automático)
+# ----------------------
+
+_PAGAMENTO_DEFS: List[Tuple[int, str]] = [
+    (90, "Tomar conhecimento das peculiaridades do pagamento no exterior (Módulo 16 do MCA 177-2) e verificar com a UPAG a transcrição da portaria de designação em Boletim Interno."),
+
+    (60, "Preencher dados (portaria, identidade, comprovante de residência) em https://www.bbamericas.com/br/expatriados/ para abertura on-line da conta-corrente no exterior."),
+    (60, "Aguardar análise do Banco do Brasil Americas; sanar pendências ou receber confirmação de abertura da conta-corrente por e-mail."),
+    (60, "Após abertura da conta e com a data do deslocamento definida, enviar para chefiapp2.dirad@fab.mil.br: Declaração de Embarque (Anexo A), Termo de Ciência (Anexo B) e captura do e-mail do banco com nome e nº da conta."),
+    (60, "Enviar a Declaração de Embarque (Anexo A) ao Setor de Pagamento de Pessoal da UPAG."),
+    (60, "Receber por e-mail (PP2) a planilha estimativa de retribuição mensal (Anexo C) e, se aplicável, cálculos do FSN (Anexo D) e pensão alimentícia (Anexo E); responder informando a forma de recebimento da Ajuda de Custo de ida."),
+
+    (10, "Se houver obrigação de pensão alimentícia/judicial: preencher a 'Declaração de Pagamento de Pensão Alimentícia durante Missão no Exterior' (Anexo E) e efetuar, até o dia 5 do mês de embarque, o pagamento da 1ª parcela via GRU (valor de 1 mês)."),
+    (10, "Se optar por sacar parte da Ajuda de Custo em espécie: informar à PP2 (por e-mail) com, no mínimo, 8 dias úteis de antecedência a agência (do rol enviado), o valor (US$ múltiplos de 100) e a data do saque; janela entre D-30 e 3 dias úteis antes do embarque."),
+    (10, "Se não houver interesse no saque em espécie: informar por e-mail à PP2 para pagamento integral da Ajuda de Custo na conta-corrente do banco credenciado."),
+    (10, "Ao receber o Ofício de venda de moeda estrangeira (PP2), conferir e solicitar ajustes; no dia do saque levar o Ofício e documento com foto; após o saque, enviar à PP2/SDPP (chefiapp2.dirad@fab.mil.br) cópia do contrato de câmbio emitido pelo Banco do Brasil SA."),
+
+    (5,  "A partir do mês de embarque, regularizar diretamente com as entidades consignatárias os pagamentos devidos durante a missão no exterior."),
+]
+
+
+def _get_pagamento_tasks(auth_date: date) -> List[Dict]:
+    if not auth_date:
+        return []
+    tasks = []
+    for i, (offset, title) in enumerate(_PAGAMENTO_DEFS, start=1):
+        tasks.append({
+            "title": title,
+            "deadline": auth_date - timedelta(days=offset),
+            "key": f"pay-{i:02d}",
+        })
+    return tasks
+
+
+def _pagamento_progress(auth_date: date):
+    tasks = _get_pagamento_tasks(auth_date)
+    total = len(tasks)
+    done = sum(1 for t in tasks if _get_flag(t["key"]))
+    return done, total
+
+
+def render_pagamento_section():
+    st.subheader("Pagamento – prazos automáticos")
+    if not st.session_state.auth_date:
+        st.info("Selecione a **data de autorização de saída do país** na barra lateral para ver os prazos de Pagamento.")
+        return 0, 0
+
+    tasks = _get_pagamento_tasks(st.session_state.auth_date)
+    pay_done = 0
+
+    for t in tasks:
+        cols = st.columns([0.08, 0.62, 0.15, 0.15])
+        with cols[0]:
+            checked = st.checkbox("", value=_get_flag(t["key"]), key=f"ui-{t['key']}")
+            if checked != _get_flag(t["key"]):
+                _set_flag(t["key"], checked)
+        with cols[1]:
+            st.markdown(f"**{t['title']}**")
+            deadline_chip(t["deadline"])
+        with cols[2]:
+            status_badge(_get_flag(t["key"]))
+        with cols[3]:
+            st.write("")
+        if _get_flag(t["key"]):
+            pay_done += 1
+
+    return pay_done, len(tasks)
+
+# ----------------------
 # Progresso geral
 # ----------------------
 
@@ -478,8 +546,9 @@ def _overall_progress() -> float:
         f_done, f_total = _ferias_progress(st.session_state.auth_date)
         p_done, p_total = _passaporte_progress(st.session_state.auth_date)
         i_done, i_total = _inspsau_progress(st.session_state.auth_date)
-        total += (f_total + p_total + i_total)
-        done += (f_done + p_done + i_done)
+        pay_done, pay_total = _pagamento_progress(st.session_state.auth_date)
+        total += (f_total + p_total + i_total + pay_total)
+        done  += (f_done + p_done + i_done + pay_done)
     return (done / total) if total else 0.0
 
 # ----------------------
@@ -558,6 +627,12 @@ def render_tasks(page: str):
         i_done, i_total = render_inspsau_section()
         auto_done += i_done
         auto_total += i_total
+        st.divider()
+    elif page == "Pagamento":
+        st.info("As atividades de **Pagamento** são geradas automaticamente a partir da data selecionada.")
+        pay_done, pay_total = render_pagamento_section()
+        auto_done += pay_done
+        auto_total += pay_total
         st.divider()
 
     total = manual_total + auto_total
