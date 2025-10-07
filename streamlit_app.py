@@ -303,15 +303,16 @@ def render_passaporte_section():
 def render_tasks(page: str):
     st.subheader(page)
 
-    # progresso da página (lista manual + férias quando aplicável)
+    # progresso da página (lista manual + seções automáticas quando aplicável)
     manual_tasks = _get_tasks(page)
     manual_done = sum(1 for t in manual_tasks if t.get("done"))
     manual_total = len(manual_tasks)
 
-    ferias_done = 0
-    ferias_total = 0
+    # inicializa acumuladores das seções automáticas
+    auto_done = 0
+    auto_total = 0
 
-    # Se for "Antes da Missão", renderizar a seção de férias primeiro
+    # Seções automáticas por página
     if page == "Antes da Missão":
         st.info("As atividades de **Férias** são geradas automaticamente a partir da data selecionada.")
         f_done, f_total = render_ferias_section()
@@ -325,8 +326,8 @@ def render_tasks(page: str):
         auto_total += p_total
         st.divider()
 
-    total = manual_total + ferias_total
-    done = manual_done + ferias_done
+    total = manual_total + auto_total
+    done = manual_done + auto_done
     prog = (done / total) if total else 0.0
     st.progress(prog, text=f"Progresso: {int(prog*100)}%")
 
