@@ -666,25 +666,28 @@ def main():
     st.caption("Acompanhe o status dos afazeres antes da IDA e nas primeiras etapas na CABW.")
 
     with st.sidebar:
-        st.header("Menu")
-        nav_index = PAGES.index(st.session_state.page)
-        st.radio("Etapas", options=PAGES, index=nav_index, key="nav")
-        st.session_state.page = st.session_state.nav
-        st.divider()
-        st.markdown("**Data de autorização de saída do país**")
-        st.session_state.auth_date = st.date_input(
-            "Selecione a data",
-            value=st.session_state.auth_date,
-            format="DD/MM/YYYY",
-        )
-        st.caption("Essa data alimenta os prazos automáticos (ex.: férias, passaporte, INSPSAU).")
-        st.divider()
-        st.markdown("**Progresso Geral**")
-        overall = _overall_progress()
-        st.progress(overall, text=f"{int(overall*100)}% concluído")
-        export_json_button()
-        import_json_uploader()
-        st.caption("Dica: exporte seu progresso antes de trocar de dispositivo.")
+    st.header("Menu")
+    nav_index = PAGES.index(st.session_state.page)
+    selected = st.radio("Etapas", options=PAGES, index=nav_index)
+    st.session_state.page = selected
+    st.divider()
+
+    st.markdown("**Data de autorização de saída do país**")
+    st.session_state.auth_date = st.date_input(
+        "Selecione a data",
+        value=st.session_state.auth_date,
+        format="DD/MM/YYYY",
+    )
+    st.caption("Essa data alimenta os prazos automáticos (ex.: férias, pagamento, INSPSAU).")
+
+    st.divider()
+    st.markdown("**Progresso Geral**")
+    overall = _overall_progress()
+    st.progress(overall, text=f"{int(overall*100)}% concluído")
+
+    export_json_button()
+    import_json_uploader()
+    st.caption("Dica: exporte seu progresso antes de trocar de dispositivo.")
 
     render_tasks(st.session_state.page)
 
