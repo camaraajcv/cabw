@@ -84,19 +84,69 @@ def _get_ferias_tasks(auth_date: date) -> List[Dict]:
         },
     ]
 
+# ----------------------
+# PASSAPORTE & VISTO (tarefas e prazos relativos em dias antes da missão)
+# ----------------------
 
-def _get_ferias_done(key: str) -> bool:
+_PASSAPORTE_DEFS: List[Tuple[int, str]] = [
+    (180, "AGD – Fazer contato com o GAP-SJ para verificar possibilidade de passaporte pelo DECEA"),
+    (155, "Agendar foto"),
+    (150, "Elaborar Ofício de Apoio ao GAP-SJ solicitando apoio para emissão de passaporte"),
+    (150, "Preencher o Formulário MRE (modelo militar) — 1 (uma) via para cada solicitante."),
+    (150, "Preencher o Modelo de Autorização para Menor, caso aplicável."),
+    (130, "Ofício de Apoio assinado"),
+    (130, "FPP ou Portaria (se houver)"),
+    (130, "RG Civil"),
+    (130, "RG Militar"),
+    (130, "CPF"),
+    (130, "Certidão de Casamento ou Nascimento (se for o caso)"),
+    (130, "Título de Eleitor"),
+    (130, "Comprovante de Quitação Eleitoral"),
+    (130, "Passaportes Oficiais anteriores, se tiver"),
+    (130, "Fotos 5x7 cm (formato digital)"),
+    (130, "Assinaturas digitalizadas (modelo em anexo no e-mail)"),
+    (120, "Enviar por e-mail ao GAP-SJ (Seção de Passaportes): a) Formulários preenchidos; b) Arquivos digitais das fotos e assinaturas; c) Documentação digitalizada (PDF)"),
+    (100, "Aguardar o envio dos Recibos MRE (enviados por e-mail após cadastro no sistema do Itamaraty)"),
+    (100, "Envio/Entrega das Fotos, Recibos de Entrega e Passaportes antigos"),
+    (100, "Aguardar recebimento das cópias dos Passaportes pelo ITAMARATY"),
+    (100, "Preenchimento do Formulário DS-160"),
+    (100, "Envio dos formulários em versão preto e branco para o GAP-SJ"),
+    (70,  "Receber os passaportes e vistos"),
+]
+
+
+def _get_passaporte_tasks(auth_date: date) -> List[Dict]:
+    if not auth_date:
+        return []
+    tasks = []
+    for i, (offset, title) in enumerate(_PASSAPORTE_DEFS, start=1):
+        tasks.append({
+            "title": title,
+            "deadline": auth_date - timedelta(days=offset),
+            "key": f"pass-{i:02d}",
+        })
+    return tasks
+
+
+def _get_flag(key: str) -> bool:
     return bool(st.session_state.get(f"done-{key}", False))
 
 
-def _set_ferias_done(key: str, val: bool):
+def _set_flag(key: str, val: bool):
     st.session_state[f"done-{key}"] = val
 
 
 def _ferias_progress(auth_date: date) -> Tuple[int, int]:
     tasks = _get_ferias_tasks(auth_date)
     total = len(tasks)
-    done = sum(1 for t in tasks if _get_ferias_done(t["key"]))
+    done = sum(1 for t in tasks if _get_flag(t["key"]))
+    return done, total
+
+
+def _passaporte_progress(auth_date: date) -> Tuple[int, int]:
+    tasks = _get_passaporte_tasks(auth_date)
+    total = len(tasks)
+    done = sum(1 for t in tasks if _get_flag(t["key"]))
     return done, total
 
 
@@ -108,13 +158,13 @@ def _overall_progress() -> float:
         tasks = _get_tasks(page)
         total += len(tasks)
         done += sum(1 for t in tasks if t.get("done"))
-    # incluir férias, se houver data
+    # incluir férias e passaporte, se houver data
     if st.session_state.auth_date:
         f_done, f_total = _ferias_progress(st.session_state.auth_date)
-        total += f_total
-        done += f_done
+        p_done, p_total = _passaporte_progress(st.session_state.auth_date)
+        total += (f_total + p_total)
+        done += (f_done + p_done)
     return (done / total) if total else 0.0
-
 
 # ----------------------
 # Exportar / importar
@@ -197,7 +247,7 @@ def deadline_chip(d: date):
 def render_ferias_section():
     st.subheader("Férias – prazos automáticos")
     if not st.session_state.auth_date:
-        st.info("Selecione a **data de autorização de saída do país** no MENU lateral para ver os prazos de todas as atividades.")
+        st.info("Selecione a **data de autorização de saída do país** na barra lateral para ver os prazos de férias.")
         return 0, 0
 
     tasks = _get_ferias_tasks(st.session_state.auth_date)
@@ -222,6 +272,34 @@ def render_ferias_section():
     return f_done, len(tasks)
 
 
+def render_passaporte_section():
+    st.subheader("Passaporte e Visto – prazos automáticos")
+    if not st.session_state.auth_date:
+        st.info("Selecione a **data de autorização de saída do país** na barra lateral para ver os prazos de passaporte.")
+        return 0, 0
+
+    tasks = _get_passaporte_tasks(st.session_state.auth_date)
+    p_done = 0
+
+    for i, t in enumerate(tasks):
+        cols = st.columns([0.08, 0.62, 0.15, 0.15])
+        with cols[0]:
+            checked = st.checkbox("", value=_get_flag(t["key"]), key=f"ui-{t['key']}")
+            if checked != _get_flag(t["key"]):
+                _set_flag(t["key"], checked)
+        with cols[1]:
+            st.markdown(f"**{t['title']}**")
+            deadline_chip(t["deadline"])
+        with cols[2]:
+            status_badge(_get_flag(t["key"]))
+        with cols[3]:
+            st.write("")
+        if _get_flag(t["key"]):
+            p_done += 1
+
+    return p_done, len(tasks)
+
+
 def render_tasks(page: str):
     st.subheader(page)
 
@@ -236,7 +314,15 @@ def render_tasks(page: str):
     # Se for "Antes da Missão", renderizar a seção de férias primeiro
     if page == "Antes da Missão":
         st.info("As atividades de **Férias** são geradas automaticamente a partir da data selecionada.")
-        ferias_done, ferias_total = render_ferias_section()
+        f_done, f_total = render_ferias_section()
+        auto_done += f_done
+        auto_total += f_total
+        st.divider()
+    elif page == "Passaporte e Visto":
+        st.info("As atividades de **Passaporte e Visto** são geradas automaticamente a partir da data selecionada.")
+        p_done, p_total = render_passaporte_section()
+        auto_done += p_done
+        auto_total += p_total
         st.divider()
 
     total = manual_total + ferias_total
