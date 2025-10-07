@@ -666,33 +666,33 @@ def main():
     st.caption("Acompanhe o status dos afazeres antes da IDA e nas primeiras etapas na CABW.")
 
     with st.sidebar:
-    st.header("Menu")
-    nav_index = PAGES.index(st.session_state.page)
-    selected = st.radio("Etapas", options=PAGES, index=nav_index)
-    st.session_state.page = selected
-    st.divider()
+        st.header("Menu")
+        nav_index = PAGES.index(st.session_state.page)
+        selected = st.radio("Etapas", options=PAGES, index=nav_index)
+        st.session_state.page = selected
+        st.divider()
 
-    st.markdown("**Data de autorização de saída do país**")
-    st.session_state.auth_date = st.date_input(
-        "Selecione a data",
-        value=st.session_state.auth_date,
-        format="DD/MM/YYYY",
-    )
-    st.caption("Essa data alimenta os prazos automáticos (ex.: férias, pagamento, INSPSAU).")
+        st.markdown("**Data de autorização de saída do país**")
+        st.session_state.auth_date = st.date_input(
+            "Selecione a data",
+            value=st.session_state.auth_date,
+            format="DD/MM/YYYY",
+        )
+        st.caption("Essa data alimenta os prazos automáticos (ex.: férias, pagamento, INSPSAU).")
 
-    st.divider()
-    st.markdown("**Progresso Geral**")
-    overall = _overall_progress()
-    st.progress(overall, text=f"{int(overall*100)}% concluído")
+        st.divider()
+        st.markdown("**Progresso Geral**")
+        overall = _overall_progress()
+        st.progress(overall, text=f"{int(overall*100)}% concluído")
 
-    export_json_button()
-    import_json_uploader()
-    st.caption("Dica: exporte seu progresso antes de trocar de dispositivo.")
+        export_json_button()
+        import_json_uploader()
+        st.caption("Dica: exporte seu progresso antes de trocar de dispositivo.")
 
-    render_tasks(st.session_state.page)
+        render_tasks(st.session_state.page)
 
-    st.divider()
-    st.caption("Versão com prazos automáticos para Férias, Passaporte/Visto e INSPSAU. Tabelas auxiliares sob demanda.")
+        st.divider()
+        st.caption("Versão com prazos automáticos para Férias, Passaporte/Visto e INSPSAU. Tabelas auxiliares sob demanda.")
 
 
 if __name__ == "__main__":
