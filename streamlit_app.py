@@ -364,11 +364,9 @@ def render_passaporte_reference_table():
         today = date.today()
         delta = (label_date - today).days
         if delta > 0:
-            color = "#dc2626"  # futuro -> vermelho
-        elif delta == 0:
-            color = "#16a34a"
+            color = "#16a34a"  # futuro -> VERDE (ainda há tempo)
         else:
-            color = "#166534"  # passado -> verde escuro
+            color = "#dc2626"  # hoje ou passado -> VERMELHO  # passado -> verde escuro
         txt = f"{prefix}{label_date.strftime('%d/%m/%Y')}"
         st.markdown(
             f"<div style='display:inline-block;padding:4px 10px;border-radius:10px;background:{color};color:white;font-size:12px;'>{txt}</div>",
