@@ -689,10 +689,11 @@ def main():
         import_json_uploader()
         st.caption("Dica: exporte seu progresso antes de trocar de dispositivo.")
 
-        render_tasks(st.session_state.page)
 
-        st.divider()
-        st.caption("Versão com prazos automáticos para Férias, Passaporte/Visto e INSPSAU. Tabelas auxiliares sob demanda.")
+    render_tasks(st.session_state.page)
+
+    st.divider()
+    st.caption("Versão com prazos automáticos para Férias, Passaporte/Visto e INSPSAU. Tabelas auxiliares sob demanda.")
 
 
 if __name__ == "__main__":
