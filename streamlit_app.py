@@ -386,7 +386,7 @@ def main():
         st.radio("Etapas", options=PAGES, index=nav_index, key="nav")
         st.session_state.page = st.session_state.nav
         st.divider()
-        st.markdown("**Data de autorização de saída do país**")ção de saída do país**")
+        st.markdown("**Data de autorização de saída do país**")
         st.session_state.auth_date = st.date_input(
             "Selecione a data",
             value=st.session_state.auth_date,
