@@ -32,7 +32,16 @@ def _page_index() -> int:
 
 def _go_prev_page():
     idx = _page_index()
-    st.session_state.page = PAGES[max(0, idx - 1)]
+    new_page = PAGES[max(0, idx - 1)]
+    st.session_state.page = new_page
+    st.session_state.nav = new_page
+
+
+def _go_next_page():
+    idx = _page_index()
+    new_page = PAGES[min(len(PAGES) - 1, idx + 1)]
+    st.session_state.page = new_page
+    st.session_state.nav = new_page
 
 
 def _go_next_page():
@@ -373,9 +382,11 @@ def main():
 
     with st.sidebar:
         st.header("Menu")
-        st.session_state.page = st.radio("Etapas", options=PAGES, index=PAGES.index(st.session_state.page))
+        nav_index = PAGES.index(st.session_state.page)
+        st.radio("Etapas", options=PAGES, index=nav_index, key="nav")
+        st.session_state.page = st.session_state.nav
         st.divider()
-        st.markdown("**Data de autorização de saída do país**")
+        st.markdown("**Data de autorização de saída do país**")ção de saída do país**")
         st.session_state.auth_date = st.date_input(
             "Selecione a data",
             value=st.session_state.auth_date,
@@ -403,4 +414,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
