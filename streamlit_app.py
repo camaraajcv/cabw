@@ -197,7 +197,7 @@ def deadline_chip(d: date):
 def render_ferias_section():
     st.subheader("Férias – prazos automáticos")
     if not st.session_state.auth_date:
-        st.info("Selecione a **data de autorização de saída do país** na barra lateral para ver os prazos de férias.")
+        st.info("Selecione a **data de autorização de saída do país** no MENU lateral para ver os prazos de todas as atividades.")
         return 0, 0
 
     tasks = _get_ferias_tasks(st.session_state.auth_date)
