@@ -26,6 +26,20 @@ def _init_state():
         st.session_state.auth_date = None
 
 
+def _page_index() -> int:
+    return PAGES.index(st.session_state.page)
+
+
+def _go_prev_page():
+    idx = _page_index()
+    st.session_state.page = PAGES[max(0, idx - 1)]
+
+
+def _go_next_page():
+    idx = _page_index()
+    st.session_state.page = PAGES[min(len(PAGES) - 1, idx + 1)]
+
+
 def _get_tasks(page: str) -> List[Dict]:
     return st.session_state.data.setdefault(page, [])
 
@@ -173,7 +187,7 @@ def _overall_progress() -> float:
 def export_json_button():
     # também exportamos os estados de férias
     extra_state = {
-        k: v for k, v in st.session_state.items() if k.startswith("done-ferias-")
+        k: v for k, v in st.session_state.items() if k.startswith("done-")
     }
     payload = {
         "lists": st.session_state.data,
