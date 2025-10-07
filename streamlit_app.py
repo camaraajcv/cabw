@@ -175,7 +175,50 @@ _PASSAPORTE_TABELA = [
     {"Categoria": "", "Atividade": "Preencher formulário DS-160", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "ceac.state.gov"},
     {"Categoria": "", "Atividade": "Imprimir confirmação DS-160", "Prazo": "Após preenchimento DS-160", "Destino/Envio": "Juntar ao processo"},
     {"Categoria": "", "Atividade": "Incluir cópia do passaporte oficial", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
-    {"Categoria": "", "Atividade": "Incluir Cópia das páginas 2 e 3 do passaporte", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER
+    {"Categoria": "", "Atividade": "Incluir Cópia das páginas 2 e 3 do passaporte", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Foto 5x7", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
+
+    {"Categoria": "Visto A-2 Filha", "Atividade": "Preencher formulário DS-160", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "ceac.state.gov"},
+    {"Categoria": "", "Atividade": "Imprimir confirmação DS-160", "Prazo": "Após preenchimento DS-160", "Destino/Envio": "Juntar ao processo"},
+    {"Categoria": "", "Atividade": "Incluir cópia do passaporte oficial", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Cópia das páginas 2 e 3 do passaporte", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
+    {"Categoria": "", "Atividade": "Incluir Foto 5x7", "Prazo": "Após obtenção do passaporte", "Destino/Envio": "Enviar ao EMAER"},
+]
+
+
+def _get_passaporte_tasks(auth_date: date) -> List[Dict]:
+    if not auth_date:
+        return []
+    tasks = []
+    for i, (offset, title) in enumerate(_PASSAPORTE_DEFS, start=1):
+        tasks.append({
+            "title": title,
+            "deadline": auth_date - timedelta(days=offset),
+            "key": f"pass-{i:02d}",
+        })
+    return tasks
+
+
+def _get_flag(key: str) -> bool:
+    return bool(st.session_state.get(f"done-{key}", False))
+
+
+def _set_flag(key: str, val: bool):
+    st.session_state[f"done-{key}"] = val
+
+
+def _ferias_progress(auth_date: date) -> Tuple[int, int]:
+    tasks = _get_ferias_tasks(auth_date)
+    total = len(tasks)
+    done = sum(1 for t in tasks if _get_flag(t["key"]))
+    return done, total
+
+
+def _passaporte_progress(auth_date: date) -> Tuple[int, int]:
+    tasks = _get_passaporte_tasks(auth_date)
+    total = len(tasks)
+    done = sum(1 for t in tasks if _get_flag(t["key"]))
+    return done, total
 
 
 def _passaporte_progress(auth_date: date) -> Tuple[int, int]:
@@ -307,6 +350,45 @@ def render_ferias_section():
     return f_done, len(tasks)
 
 
+def render_passaporte_reference_table():
+    st.markdown("### Tabela de referência – Passaporte e Visto")
+    # Cabeçalho
+    h = st.columns([0.22, 0.44, 0.18, 0.16])
+    h[0].markdown("**Categoria**")
+    h[1].markdown("**Atividade**")
+    h[2].markdown("**Prazo**")
+    h[3].markdown("**Destino/Envio**")
+    st.divider()
+
+    def _prazo_box(label_date: date, prefix: str = ""):
+        today = date.today()
+        delta = (label_date - today).days
+        if delta > 0:
+            color = "#dc2626"  # futuro -> vermelho
+        elif delta == 0:
+            color = "#16a34a"
+        else:
+            color = "#166534"  # passado -> verde escuro
+        txt = f"{prefix}{label_date.strftime('%d/%m/%Y')}"
+        st.markdown(
+            f"<div style='display:inline-block;padding:4px 10px;border-radius:10px;background:{color};color:white;font-size:12px;'>{txt}</div>",
+            unsafe_allow_html=True,
+        )
+
+    for row in _PASSAPORTE_TABELA:
+        c = st.columns([0.22, 0.44, 0.18, 0.16])
+        c[0].write(row.get("Categoria", ""))
+        c[1].write(row.get("Atividade", ""))
+        prazo_txt = row.get("Prazo", "").strip()
+        if "30 dias antes da missão" in prazo_txt.lower() and st.session_state.auth_date:
+            d = st.session_state.auth_date - timedelta(days=30)
+            with c[2]:
+                _prazo_box(d, prefix="Até 30 dias – ")
+        else:
+            c[2].write(prazo_txt)
+        c[3].write(row.get("Destino/Envio", ""))
+
+
 def render_passaporte_section():
     st.subheader("Passaporte e Visto – prazos automáticos")
     if not st.session_state.auth_date:
@@ -332,6 +414,8 @@ def render_passaporte_section():
         if _get_flag(t["key"]):
             p_done += 1
 
+    st.divider()
+    render_passaporte_reference_table()
     return p_done, len(tasks)
 
 
@@ -398,7 +482,7 @@ def main():
         st.radio("Etapas", options=PAGES, index=nav_index, key="nav")
         st.session_state.page = st.session_state.nav
         st.divider()
-        st.markdown("**Data de autorização de saída do país**")ção de saída do país**")
+        st.markdown("**Data de autorização de saída do país**")
         st.session_state.auth_date = st.date_input(
             "Selecione a data",
             value=st.session_state.auth_date,
