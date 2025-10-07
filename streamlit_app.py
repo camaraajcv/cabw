@@ -303,21 +303,25 @@ def render_passaporte_section():
 def render_tasks(page: str):
     st.subheader(page)
 
-    # progresso da página (lista manual + seções automáticas quando aplicável)
+    # progresso da página (listas automáticas quando aplicável)
     manual_tasks = _get_tasks(page)
     manual_done = sum(1 for t in manual_tasks if t.get("done"))
     manual_total = len(manual_tasks)
 
-    # inicializa acumuladores das seções automáticas
     auto_done = 0
     auto_total = 0
 
     # Seções automáticas por página
     if page == "Antes da Missão":
-        st.info("As atividades de **Férias** são geradas automaticamente a partir da data selecionada.")
+        st.info("As atividades automáticas abaixo são geradas a partir da data selecionada.")
         f_done, f_total = render_ferias_section()
         auto_done += f_done
         auto_total += f_total
+        st.divider()
+        # Também mostrar Passaporte aqui para visão geral antes da missão
+        p_done, p_total = render_passaporte_section()
+        auto_done += p_done
+        auto_total += p_total
         st.divider()
     elif page == "Passaporte e Visto":
         st.info("As atividades de **Passaporte e Visto** são geradas automaticamente a partir da data selecionada.")
@@ -331,40 +335,20 @@ def render_tasks(page: str):
     prog = (done / total) if total else 0.0
     st.progress(prog, text=f"Progresso: {int(prog*100)}%")
 
-    # Lista de tarefas manuais (com status em verde/vermelho)
-    if manual_tasks:
-        for i, task in enumerate(manual_tasks):
-            cols = st.columns([0.08, 0.62, 0.15, 0.15])
-            with cols[0]:
-                checked = st.checkbox("", value=task.get("done", False), key=f"done-{page}-{i}")
-                if checked != task.get("done", False):
-                    _toggle_task(page, i, checked)
-            with cols[1]:
-                st.markdown(f"**{task['title']}**")
-                note_val = st.text_area("Notas", value=task.get("notes", ""), key=f"notes-{page}-{i}", height=60)
-                if note_val != task.get("notes", ""):
-                    _update_notes(page, i, note_val)
-            with cols[2]:
-                status_badge(task.get("done", False))
-            with cols[3]:
-                if st.button("🗑️ Excluir", key=f"del-{page}-{i}"):
-                    _delete_task(page, i)
-                    st.experimental_rerun()
-    else:
-        st.info("Nenhuma tarefa adicionada ainda para esta etapa (listas manuais).")
-
+    # Navegação tipo formulário (Anterior / Próximo)
     st.divider()
-    # Form para nova tarefa (enquanto não definirmos todas as listas oficiais)
-    with st.form(key=f"new-task-{page}", clear_on_submit=True):
-        new_title = st.text_input("Adicionar tarefa (temporário – você poderá me dizer a lista oficial depois)")
-        submitted = st.form_submit_button("Adicionar")
-        if submitted:
-            if new_title.strip():
-                _save_task(page, new_title)
-                st.success("Tarefa adicionada.")
-                st.experimental_rerun()
-            else:
-                st.warning("Informe um título para a tarefa.")
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c1:
+        if st.button("◀️ Anterior", use_container_width=True, disabled=_page_index() == 0):
+            _go_prev_page()
+            st.experimental_rerun()
+    with c2:
+        idx = _page_index() + 1
+        st.markdown(f"<div style='text-align:center;'>Etapa {idx}/{len(PAGES)}</div>", unsafe_allow_html=True)
+    with c3:
+        if st.button("Próximo ▶️", use_container_width=True, disabled=_page_index() == len(PAGES)-1):
+            _go_next_page()
+            st.experimental_rerun()
 
 
 # ----------------------
