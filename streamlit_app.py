@@ -5,7 +5,7 @@ import streamlit as st
 
 APP_TITLE = "Checklist de Preparação para Designação – CABW"
 PAGES = [
-    "Antes da Missão",
+    "Férias",
     "INSPSAU (Inspeção de Saúde)",
     "Pagamento",
     "RAIRE",
@@ -165,9 +165,9 @@ def render_ferias_section():
 # PASSAPORTE & VISTO (automático + tabela opcional)
 # ----------------------
 _PASSAPORTE_DEFS: List[Tuple[int, str]] = [
-    (180, "AGD – Fazer contato com o GAP-SJ para verificar possibilidade de passaporte pelo DECEA"),
+    (180, "Fazer contato com o GAP/EMAER para verificar possibilidade de passaporte pelo DECEA caso seja de interesse por conta da proximidade"),
     (155, "Agendar foto"),
-    (150, "Elaborar Ofício de Apoio ao GAP-SJ solicitando apoio para emissão de passaporte"),
+    (150, "Elaborar Ofício de Apoio ao GAP/DECEA ou EMAER solicitando apoio para emissão de passaporte"),
     (150, "Preencher o Formulário MRE (modelo militar) — 1 (uma) via para cada solicitante."),
     (150, "Preencher o Modelo de Autorização para Menor, caso aplicável."),
     (130, "Ofício de Apoio assinado"),
@@ -181,7 +181,7 @@ _PASSAPORTE_DEFS: List[Tuple[int, str]] = [
     (130, "Passaportes Oficiais anteriores, se tiver"),
     (130, "Fotos 5x7 cm (formato digital)"),
     (130, "Assinaturas digitalizadas (modelo em anexo no e-mail)"),
-    (120, "Enviar por e-mail ao GAP-SJ (Seção de Passaportes): a) Formulários preenchidos; b) Arquivos digitais das fotos e assinaturas; c) Documentação digitalizada (PDF)"),
+    (120, "Enviar por e-mail ao GAP/DECEA ou EMAER (Seção de Passaportes): a) Formulários preenchidos; b) Arquivos digitais das fotos e assinaturas; c) Documentação digitalizada (PDF)"),
     (100, "Aguardar o envio dos Recibos MRE (enviados por e-mail após cadastro no sistema do Itamaraty)"),
     (100, "Envio/Entrega das Fotos, Recibos de Entrega e Passaportes antigos"),
     (100, "Aguardar recebimento das cópias dos Passaportes pelo ITAMARATY"),
@@ -530,6 +530,74 @@ def render_pagamento_section():
     return pay_done, len(tasks)
 
 # ----------------------
+# RAIRE (automático)
+# ----------------------
+
+# Offsets em dias relativos à data de autorização:
+# use valores POSITIVOS para D-XX (antes) e NEGATIVOS para D+XX (depois)
+_RAIRE_DEFS: List[Tuple[int, str]] = [
+    (30,  "Verificar o valor do aluguel em https://raire-pp2-sdpp.streamlit.app/"),  # D-30
+    (-10, "Contrato assinado (Locador/Locatário)"),                                   # D+10
+    (-15, "Contrato traduzido para Português"),                                      # D+15
+    (-20, "Declaração de Pagamento (ANEXO H) assinada pelo Adido/Chefe"),            # D+20
+    (-30, "Comprovante de Pagamento (Recibo/NF/Fatura + comprovante bancário)"),     # D+30
+]
+
+
+def _get_raire_tasks(auth_date: date) -> List[Dict]:
+    if not auth_date:
+        return []
+    tasks = []
+    for i, (offset, title) in enumerate(_RAIRE_DEFS, start=1):
+        # se offset > 0 => D-offset (antes); se offset < 0 => D+abs(offset) (depois)
+        deadline = auth_date - timedelta(days=offset)
+        tasks.append({
+            "title": title,
+            "deadline": deadline,
+            "key": f"raire-{i:02d}",
+        })
+    return tasks
+
+
+def _raire_progress(auth_date: date):
+    tasks = _get_raire_tasks(auth_date)
+    total = len(tasks)
+    done = sum(1 for t in tasks if _get_flag(t["key"]))
+    return done, total
+
+
+def render_raire_section():
+    st.subheader("RAIRE – prazos automáticos")
+    if not st.session_state.auth_date:
+        st.info("Selecione a **data de autorização de saída do país** na barra lateral para ver os prazos da RAIRE.")
+        return 0, 0
+
+    tasks = _get_raire_tasks(st.session_state.auth_date)
+    r_done = 0
+
+    for t in tasks:
+        cols = st.columns([0.08, 0.62, 0.15, 0.15])
+        with cols[0]:
+            checked = st.checkbox("", value=_get_flag(t["key"]), key=f"ui-{t['key']}")
+            if checked != _get_flag(t["key"]):
+                _set_flag(t["key"], checked)
+        with cols[1]:
+            # Link clicável para o primeiro item (aluguel)
+            title = t['title']
+            if "raire-pp2-sdpp.streamlit.app" in title:
+                title = title.replace("https://raire-pp2-sdpp.streamlit.app/", "[raire-pp2-sdpp.streamlit.app](https://raire-pp2-sdpp.streamlit.app/)")
+            st.markdown(f"**{title}**")
+            deadline_chip(t["deadline"])
+        with cols[2]:
+            status_badge(_get_flag(t["key"]))
+        with cols[3]:
+            st.write("")
+        if _get_flag(t["key"]):
+            r_done += 1
+
+    return r_done, len(tasks)
+
+# ----------------------
 # Progresso geral
 # ----------------------
 
@@ -547,8 +615,9 @@ def _overall_progress() -> float:
         p_done, p_total = _passaporte_progress(st.session_state.auth_date)
         i_done, i_total = _inspsau_progress(st.session_state.auth_date)
         pay_done, pay_total = _pagamento_progress(st.session_state.auth_date)
-        total += (f_total + p_total + i_total + pay_total)
-        done  += (f_done + p_done + i_done + pay_done)
+        r_done, r_total = _raire_progress(st.session_state.auth_date)
+        total += (f_total + p_total + i_total + pay_total + r_total)
+        done  += (f_done + p_done + i_done + pay_done + r_done)
     return (done / total) if total else 0.0
 
 # ----------------------
@@ -634,6 +703,18 @@ def render_tasks(page: str):
         auto_done += pay_done
         auto_total += pay_total
         st.divider()
+    elif page == "RAIRE":
+        st.info("As atividades da **RAIRE** são geradas automaticamente a partir da data selecionada.")
+        r_done, r_total = render_raire_section()
+        auto_done += r_done
+        auto_total += r_total
+        st.divider()
+    elif page == "Pagamento":
+        st.info("As atividades de **Pagamento** são geradas automaticamente a partir da data selecionada.")
+        pay_done, pay_total = render_pagamento_section()
+        auto_done += pay_done
+        auto_total += pay_total
+        st.divider()
 
     total = manual_total + auto_total
     done = manual_done + auto_done
@@ -668,27 +749,23 @@ def main():
     with st.sidebar:
         st.header("Menu")
         nav_index = PAGES.index(st.session_state.page)
-        selected = st.radio("Etapas", options=PAGES, index=nav_index)
-        st.session_state.page = selected
+        st.radio("Etapas", options=PAGES, index=nav_index, key="nav")
+        st.session_state.page = st.session_state.nav
         st.divider()
-
         st.markdown("**Data de autorização de saída do país**")
         st.session_state.auth_date = st.date_input(
             "Selecione a data",
             value=st.session_state.auth_date,
             format="DD/MM/YYYY",
         )
-        st.caption("Essa data alimenta os prazos automáticos (ex.: férias, pagamento, INSPSAU).")
-
+        st.caption("Essa data alimenta os prazos automáticos (ex.: férias, passaporte, INSPSAU).")
         st.divider()
         st.markdown("**Progresso Geral**")
         overall = _overall_progress()
         st.progress(overall, text=f"{int(overall*100)}% concluído")
-
         export_json_button()
         import_json_uploader()
         st.caption("Dica: exporte seu progresso antes de trocar de dispositivo.")
-
 
     render_tasks(st.session_state.page)
 
@@ -698,3 +775,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
