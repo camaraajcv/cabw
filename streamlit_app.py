@@ -5,7 +5,7 @@ import streamlit as st
 
 APP_TITLE = "Checklist de Preparação para Designação – CABW"
 PAGES = [
-    "Férias",
+    "Antes da Missão",
     "INSPSAU (Inspeção de Saúde)",
     "Pagamento",
     "RAIRE",
