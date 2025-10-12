@@ -5,7 +5,7 @@ import streamlit as st
 
 APP_TITLE = "Checklist de Preparação para Designação – CABW"
 PAGES = [
-    "Férias",
+    "Antes da Missão",
     "INSPSAU (Inspeção de Saúde)",
     "Pagamento",
     "RAIRE",
@@ -679,7 +679,7 @@ def render_tasks(page: str):
     auto_done = 0
     auto_total = 0
 
-    if page == "Férias":
+    if page == "Antes da Missão":
         st.info("As atividades de **Férias** são geradas automaticamente a partir da data selecionada.")
         f_done, f_total = render_ferias_section()
         auto_done += f_done
