@@ -5,7 +5,7 @@ import streamlit as st
 
 APP_TITLE = "Checklist de Preparação para Designação – CABW"
 PAGES = [
-    "Antes da Missão",
+    "Férias",
     "INSPSAU (Inspeção de Saúde)",
     "Pagamento",
     "RAIRE",
@@ -165,9 +165,9 @@ def render_ferias_section():
 # PASSAPORTE & VISTO (automático + tabela opcional)
 # ----------------------
 _PASSAPORTE_DEFS: List[Tuple[int, str]] = [
-    (180, "Fazer contato com o GAP para verificar possibilidade de passaporte pelo DECEA"),
+    (180, "AGD – Fazer contato com o GAP-SJ para verificar possibilidade de passaporte pelo DECEA"),
     (155, "Agendar foto"),
-    (150, "Elaborar Ofício de Apoio ao GAP solicitando apoio para emissão de passaporte"),
+    (150, "Elaborar Ofício de Apoio ao GAP-SJ solicitando apoio para emissão de passaporte"),
     (150, "Preencher o Formulário MRE (modelo militar) — 1 (uma) via para cada solicitante."),
     (150, "Preencher o Modelo de Autorização para Menor, caso aplicável."),
     (130, "Ofício de Apoio assinado"),
@@ -181,7 +181,7 @@ _PASSAPORTE_DEFS: List[Tuple[int, str]] = [
     (130, "Passaportes Oficiais anteriores, se tiver"),
     (130, "Fotos 5x7 cm (formato digital)"),
     (130, "Assinaturas digitalizadas (modelo em anexo no e-mail)"),
-    (120, "Enviar por e-mail ao GAP (Seção de Passaportes)/DECEA ou EMAER: a) Formulários preenchidos; b) Arquivos digitais das fotos e assinaturas; c) Documentação digitalizada (PDF)"),
+    (120, "Enviar por e-mail ao GAP-SJ (Seção de Passaportes): a) Formulários preenchidos; b) Arquivos digitais das fotos e assinaturas; c) Documentação digitalizada (PDF)"),
     (100, "Aguardar o envio dos Recibos MRE (enviados por e-mail após cadastro no sistema do Itamaraty)"),
     (100, "Envio/Entrega das Fotos, Recibos de Entrega e Passaportes antigos"),
     (100, "Aguardar recebimento das cópias dos Passaportes pelo ITAMARATY"),
@@ -752,7 +752,7 @@ def main():
         st.markdown("**Data de autorização de saída do país**")
         st.session_state.auth_date = st.date_input(
             "Selecione a data",
-            value=st.session_state.auth_date,
+            value=st.session_state.auth_date or date.today(),
             format="DD/MM/YYYY",
         )
     with top2:
