@@ -25,6 +25,10 @@ def _init_state():
         st.session_state.nav = st.session_state.page
     if "auth_date" not in st.session_state:
         st.session_state.auth_date = None
+    # Normalização caso o nome da página tenha mudado (ex: "Antes da Missão" -> "Férias")
+    if st.session_state.page not in PAGES:
+        st.session_state.page = PAGES[0]
+        st.session_state.nav = PAGES[0]
 
 
 def _page_index() -> int:
@@ -764,6 +768,8 @@ def main():
 
     with st.sidebar:
         st.header("Menu")
+        if st.session_state.page not in PAGES:
+            st.session_state.page = PAGES[0]
         nav_index = PAGES.index(st.session_state.page)
         selected = st.radio("Etapas", options=PAGES, index=nav_index)
         st.session_state.page = selected
