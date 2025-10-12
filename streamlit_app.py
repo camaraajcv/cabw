@@ -5,7 +5,7 @@ import streamlit as st
 
 APP_TITLE = "Checklist de Preparação para Designação – CABW"
 PAGES = [
-    "Antes da Missão",
+    "Férias",
     "INSPSAU (Inspeção de Saúde)",
     "Pagamento",
     "RAIRE",
@@ -165,9 +165,9 @@ def render_ferias_section():
 # PASSAPORTE & VISTO (automático + tabela opcional)
 # ----------------------
 _PASSAPORTE_DEFS: List[Tuple[int, str]] = [
-    (180, "Fazer contato com o GAP/EMAER para verificar possibilidade de passaporte pelo DECEA caso seja de interesse por conta da proximidade"),
+    (180, "Fazer contato com o GAP para verificar possibilidade de passaporte pelo DECEA"),
     (155, "Agendar foto"),
-    (150, "Elaborar Ofício de Apoio ao GAP/DECEA ou EMAER solicitando apoio para emissão de passaporte"),
+    (150, "Elaborar Ofício de Apoio ao GAP solicitando apoio para emissão de passaporte"),
     (150, "Preencher o Formulário MRE (modelo militar) — 1 (uma) via para cada solicitante."),
     (150, "Preencher o Modelo de Autorização para Menor, caso aplicável."),
     (130, "Ofício de Apoio assinado"),
@@ -181,7 +181,7 @@ _PASSAPORTE_DEFS: List[Tuple[int, str]] = [
     (130, "Passaportes Oficiais anteriores, se tiver"),
     (130, "Fotos 5x7 cm (formato digital)"),
     (130, "Assinaturas digitalizadas (modelo em anexo no e-mail)"),
-    (120, "Enviar por e-mail ao GAP/DECEA ou EMAER (Seção de Passaportes): a) Formulários preenchidos; b) Arquivos digitais das fotos e assinaturas; c) Documentação digitalizada (PDF)"),
+    (120, "Enviar por e-mail ao GAP (Seção de Passaportes)/DECEA ou EMAER: a) Formulários preenchidos; b) Arquivos digitais das fotos e assinaturas; c) Documentação digitalizada (PDF)"),
     (100, "Aguardar o envio dos Recibos MRE (enviados por e-mail após cadastro no sistema do Itamaraty)"),
     (100, "Envio/Entrega das Fotos, Recibos de Entrega e Passaportes antigos"),
     (100, "Aguardar recebimento das cópias dos Passaportes pelo ITAMARATY"),
@@ -679,7 +679,7 @@ def render_tasks(page: str):
     auto_done = 0
     auto_total = 0
 
-    if page == "Antes da Missão":
+    if page == "Férias":
         st.info("As atividades de **Férias** são geradas automaticamente a partir da data selecionada.")
         f_done, f_total = render_ferias_section()
         auto_done += f_done
@@ -746,23 +746,28 @@ def main():
     st.title(APP_TITLE)
     st.caption("Acompanhe o status dos afazeres antes da IDA e nas primeiras etapas na CABW.")
 
-    with st.sidebar:
-        st.header("Menu")
-        nav_index = PAGES.index(st.session_state.page)
-        st.radio("Etapas", options=PAGES, index=nav_index, key="nav")
-        st.session_state.page = st.session_state.nav
-        st.divider()
+    # Barra superior com Data da Missão e Progresso Geral
+    top1, top2 = st.columns([1, 1])
+    with top1:
         st.markdown("**Data de autorização de saída do país**")
         st.session_state.auth_date = st.date_input(
             "Selecione a data",
             value=st.session_state.auth_date,
             format="DD/MM/YYYY",
         )
-        st.caption("Essa data alimenta os prazos automáticos (ex.: férias, passaporte, INSPSAU).")
-        st.divider()
+    with top2:
         st.markdown("**Progresso Geral**")
         overall = _overall_progress()
         st.progress(overall, text=f"{int(overall*100)}% concluído")
+
+    st.divider()
+
+    with st.sidebar:
+        st.header("Menu")
+        nav_index = PAGES.index(st.session_state.page)
+        selected = st.radio("Etapas", options=PAGES, index=nav_index)
+        st.session_state.page = selected
+        st.divider()
         export_json_button()
         import_json_uploader()
         st.caption("Dica: exporte seu progresso antes de trocar de dispositivo.")
@@ -775,4 +780,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
